@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import { TickData } from "../types/market";
+import type { TickData } from "../types/market";
 
 export const useMarketData = () => {
   const [tickData, setTickData] = useState<TickData[]>([]);

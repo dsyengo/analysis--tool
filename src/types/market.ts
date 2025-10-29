@@ -1,5 +1,5 @@
 export type MarketType =
-  | "digits"
+  | "over_under"
   | "rise_fall"
   | "matches_differs"
   | "even_odd";

@@ -14,7 +14,7 @@ function App() {
   const [volatilityIndex, setVolatilityIndex] =
     useState<VolatilityIndex>("vol50");
   const [marketSetup, setMarketSetup] = useState<MarketSetup>({
-    contractType: "digits",
+    contractType: "over_under",
     predictionDigit: 0,
     tickRange: 100,
   });
@@ -31,7 +31,7 @@ function App() {
     disconnect,
     subscribe,
     unsubscribe,
-    clearMessages,
+    clearMessages,  
   } = useWebSocket(DERIV_WS_URL);
 
   const handleConnect = () => {
