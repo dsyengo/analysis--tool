@@ -1,9 +1,11 @@
 export type MarketType =
+  | "digits"
   | "over_under"
   | "rise_fall"
   | "matches_differs"
   | "even_odd";
 export type ContractType =
+  | "digits"
   | "over_under"
   | "matches_differs"
   | "rise_fall"
