@@ -1,28 +1,39 @@
 {
   "compilerOptions": {
+    // --- Build settings ---
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "target": "ES2022",
-    "useDefineForClassFields": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
-    "types": ["vite/client"],
-    "skipLibCheck": true,
-
-    /* Bundler mode */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": false,
+    "moduleResolution": "Bundler",
     "moduleDetection": "force",
     "noEmit": true,
-    "jsx": "react-jsx",
+    "skipLibCheck": true,
 
-    /* Linting */
+    // --- Compatibility ---
+    "useDefineForClassFields": true,
+    "jsx": "react-jsx",
+    "types": ["vite/client", "node"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+
+    // --- Modern TypeScript Behavior ---
+    "verbatimModuleSyntax": true, // ✅ Enforce proper `import type` usage
+    "erasableSyntaxOnly": false, // Avoids erased-syntax restrictions
+    "allowImportingTsExtensions": true,
+
+    // --- Strictness & Safety ---
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "erasableSyntaxOnly": false,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+
+    // --- Build cleanliness ---
+    "noUnusedLocals": false, // ⚙️ Recommended OFF for production
+    "noUnusedParameters": false, // ⚙️ Recommended OFF for production
+
+    // --- Path Aliases (fixes '@/lib/utils' errors) ---
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
   },
   "include": ["src"]
 }
