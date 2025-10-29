@@ -1,4 +1,4 @@
-import { TickData, ProbabilityData, TrendPoint } from "../types/market";
+import type { TickData, ProbabilityData, TrendPoint } from "../types/market";
 
 export const calculateMovingAverage = (
   ticks: TickData[],

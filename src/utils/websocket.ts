@@ -1,4 +1,4 @@
-import { TickData } from "../types/market";
+import type { TickData } from "../types/market";
 
 export class DerivWebSocket {
   private ws: WebSocket | null = null;
