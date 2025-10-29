@@ -13,7 +13,7 @@ export const useWebSocket = (url: string) => {
   const [tickData, setTickData] = useState<TickData[]>([]);
   const [currentSymbol, setCurrentSymbol] = useState<string>("");
   const ws = useRef<WebSocket | null>(null);
-  const reconnectTimeout = useRef<NodeJS.Timeout>();
+  const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const addMessage = useCallback((message: WebSocketMessage) => {
     setMessages((prev) => [...prev, message].slice(-100));
