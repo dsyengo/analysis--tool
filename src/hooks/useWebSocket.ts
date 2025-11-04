@@ -77,30 +77,53 @@ export const useWebSocket = (url: string) => {
       ws.current.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log("WebSocket message received:", data.msg_type);
+          console.log("WebSocket message received:", data);
 
+          // Handle different message types
           if (data.msg_type === "tick") {
-            const tick: TickData = {
-              id: data.tick.id,
-              epoch: data.tick.epoch,
-              quote: data.tick.quote,
-              symbol: data.tick.symbol,
-            };
-            setTickData((prev) => {
-              const newData = [...prev, tick];
-              // Keep last 200 ticks for performance
-              return newData.slice(-200);
-            });
-            addMessage({
-              type: "tick",
-              data: `Tick: ${tick.symbol} - ${tick.quote}`,
-              timestamp: Date.now(),
-            });
+            // Safely handle tick data with proper error checking
+            if (
+              data.tick &&
+              typeof data.tick.quote === "number" &&
+              data.tick.symbol
+            ) {
+              const tick: TickData = {
+                epoch: data.tick.epoch || Math.floor(Date.now() / 1000),
+                quote: data.tick.quote,
+                symbol: data.tick.symbol,
+                id:
+                  data.tick.id ||
+                  `tick_${Date.now()}_${Math.random()
+                    .toString(36)
+                    .substr(2, 9)}`,
+              };
+
+              setTickData((prev) => {
+                const newData = [...prev, tick];
+                // Keep last 200 ticks for performance
+                return newData.slice(-200);
+              });
+
+              addMessage({
+                type: "tick",
+                data: `Tick: ${tick.symbol} - ${tick.quote}`,
+                timestamp: Date.now(),
+              });
+            } else {
+              console.warn("Invalid tick data received:", data.tick);
+              addMessage({
+                type: "error",
+                data: "Invalid tick data received",
+                timestamp: Date.now(),
+              });
+            }
           } else if (data.msg_type === "error") {
             console.error("API Error:", data.error);
             addMessage({
               type: "error",
-              data: `API Error: ${data.error?.message || "Unknown error"}`,
+              data: `API Error: ${
+                data.error?.message || data.error?.code || "Unknown error"
+              }`,
               timestamp: Date.now(),
             });
           } else if (data.msg_type === "subscribe") {
@@ -108,13 +131,31 @@ export const useWebSocket = (url: string) => {
             addMessage({
               type: "subscription",
               data: `Subscription confirmed for ${
-                data.subscription?.symbols?.[0] || "unknown"
+                data.subscription?.symbols?.[0] || "unknown symbol"
               }`,
               timestamp: Date.now(),
             });
+          } else if (data.msg_type === "authorize") {
+            console.log("Authorization response:", data);
+            if (data.error) {
+              addMessage({
+                type: "error",
+                data: `Authorization failed: ${data.error.message}`,
+                timestamp: Date.now(),
+              });
+            } else {
+              addMessage({
+                type: "connection",
+                data: "Authorization successful",
+                timestamp: Date.now(),
+              });
+            }
+          } else {
+            // Log other message types for debugging
+            console.log("Other message type:", data.msg_type, data);
           }
         } catch (error) {
-          console.error("Message parse error:", error);
+          console.error("Message parse error:", error, "Raw data:", event.data);
           addMessage({
             type: "error",
             data: `Message parse error: ${error}`,
@@ -139,29 +180,39 @@ export const useWebSocket = (url: string) => {
     // Clear any pending reconnection
     if (reconnectTimeout.current) {
       clearTimeout(reconnectTimeout.current);
+      reconnectTimeout.current = null;
     }
 
     if (ws.current) {
       // First unsubscribe from current symbol
       if (currentSymbol) {
-        const unsubscribeMsg = {
-          forget: currentSymbol,
-          unsubscribe: 1,
-        };
-        ws.current.send(JSON.stringify(unsubscribeMsg));
-        addMessage({
-          type: "subscription",
-          data: `Unsubscribed from ${currentSymbol}`,
-          timestamp: Date.now(),
-        });
+        try {
+          const unsubscribeMsg = {
+            forget: currentSymbol,
+            unsubscribe: 1,
+          };
+          ws.current.send(JSON.stringify(unsubscribeMsg));
+          addMessage({
+            type: "subscription",
+            data: `Unsubscribed from ${currentSymbol}`,
+            timestamp: Date.now(),
+          });
+        } catch (error) {
+          console.error("Error unsubscribing:", error);
+        }
       }
 
       // Then close the connection
-      ws.current.close(1000, "User initiated disconnect");
+      try {
+        ws.current.close(1000, "User initiated disconnect");
+      } catch (error) {
+        console.error("Error closing WebSocket:", error);
+      }
       ws.current = null;
     }
 
     setIsConnected(false);
+    setIsConnecting(false);
     setCurrentSymbol("");
     setTickData([]);
   }, [currentSymbol, addMessage]);
@@ -183,16 +234,20 @@ export const useWebSocket = (url: string) => {
 
       // Unsubscribe from current symbol first if different
       if (currentSymbol && currentSymbol !== symbol) {
-        const unsubscribeMsg = {
-          forget: currentSymbol,
-          unsubscribe: 1,
-        };
-        ws.current.send(JSON.stringify(unsubscribeMsg));
-        addMessage({
-          type: "subscription",
-          data: `Unsubscribed from ${currentSymbol}`,
-          timestamp: Date.now(),
-        });
+        try {
+          const unsubscribeMsg = {
+            forget: currentSymbol,
+            unsubscribe: 1,
+          };
+          ws.current.send(JSON.stringify(unsubscribeMsg));
+          addMessage({
+            type: "subscription",
+            data: `Unsubscribed from ${currentSymbol}`,
+            timestamp: Date.now(),
+          });
+        } catch (error) {
+          console.error("Error unsubscribing:", error);
+        }
       }
 
       // Subscribe to new symbol
@@ -232,18 +287,27 @@ export const useWebSocket = (url: string) => {
       currentSymbol
     ) {
       console.log("Unsubscribing from symbol:", currentSymbol);
-      const unsubscribeMsg = {
-        forget: currentSymbol,
-        unsubscribe: 1,
-      };
-      ws.current.send(JSON.stringify(unsubscribeMsg));
-      addMessage({
-        type: "subscription",
-        data: `Unsubscribed from ${currentSymbol}`,
-        timestamp: Date.now(),
-      });
-      setCurrentSymbol("");
-      setTickData([]);
+      try {
+        const unsubscribeMsg = {
+          forget: currentSymbol,
+          unsubscribe: 1,
+        };
+        ws.current.send(JSON.stringify(unsubscribeMsg));
+        addMessage({
+          type: "subscription",
+          data: `Unsubscribed from ${currentSymbol}`,
+          timestamp: Date.now(),
+        });
+        setCurrentSymbol("");
+        setTickData([]);
+      } catch (error) {
+        console.error("Error unsubscribing:", error);
+        addMessage({
+          type: "error",
+          data: `Error unsubscribing: ${error}`,
+          timestamp: Date.now(),
+        });
+      }
     }
   }, [currentSymbol, addMessage]);
 
@@ -254,7 +318,11 @@ export const useWebSocket = (url: string) => {
         clearTimeout(reconnectTimeout.current);
       }
       if (ws.current) {
-        ws.current.close(1000, "Component unmounted");
+        try {
+          ws.current.close(1000, "Component unmounted");
+        } catch (error) {
+          console.error("Error closing WebSocket on unmount:", error);
+        }
       }
     };
   }, []);

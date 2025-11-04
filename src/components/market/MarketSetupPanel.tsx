@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Play, Square, ChevronDown, ChevronUp } from "lucide-react";
+import { Play, Square, ChevronDown, ChevronUp, Settings } from "lucide-react";
 import type {
   MarketSetup,
   ContractType,
@@ -49,15 +49,36 @@ export const MarketSetupPanel: React.FC<MarketSetupPanelProps> = ({
   volatilityIndex,
   onVolatilityChange,
 }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [tickRange, setTickRange] = useState(100);
-
-  // Auto-connect on component mount
+  // Auto-connect and start analysis when component mounts
   useEffect(() => {
     if (!isConnected && !isConnecting) {
+      console.log("Auto-connecting on component mount...");
       onConnect();
     }
   }, []);
+
+  // Auto-start analysis when connection is established and not already analyzing
+  useEffect(() => {
+    if (isConnected && !isAnalyzing && !isConnecting) {
+      console.log("Auto-starting analysis after connection...");
+      onStartAnalysis();
+    }
+  }, [isConnected, isAnalyzing, isConnecting]);
+
+  // Handle market changes - restart analysis with new market
+  useEffect(() => {
+    if (isAnalyzing && isConnected) {
+      console.log("Market changed - restarting analysis with new market...");
+      // Stop current analysis
+      onStopAnalysis();
+      // Small delay to ensure clean stop before restart
+      const timer = setTimeout(() => {
+        onStartAnalysis();
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, [marketSetup.contractType, volatilityIndex]);
 
   const handleInputChange = (field: keyof MarketSetup, value: any) => {
     onMarketSetupChange({
@@ -68,8 +89,10 @@ export const MarketSetupPanel: React.FC<MarketSetupPanelProps> = ({
 
   const handleAnalysisToggle = () => {
     if (isAnalyzing) {
+      console.log("Manually stopping analysis...");
       onStopAnalysis();
     } else {
+      console.log("Manually starting analysis...");
       onStartAnalysis();
     }
   };
@@ -79,8 +102,8 @@ export const MarketSetupPanel: React.FC<MarketSetupPanelProps> = ({
   };
 
   const handleTickRangeChange = (value: number) => {
-    const validatedValue = Math.min(1000, Math.max(0, value));
-    setTickRange(validatedValue);
+    // Fixed: Proper validation for 1-1000 range
+    const validatedValue = Math.min(1000, Math.max(1, value));
     handleInputChange("tickRange", validatedValue);
   };
 
@@ -89,57 +112,37 @@ export const MarketSetupPanel: React.FC<MarketSetupPanelProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
-      {/* Mobile Header - Collapsible */}
-      <div className="lg:hidden border-b border-gray-200 dark:border-gray-700">
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="w-full px-4 py-4 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
-        >
+    <div className="h-full flex flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 lg:fixed lg:left-0 lg:top-16 lg:bottom-0 lg:w-80 lg:z-30">
+      {/* Mobile Header */}
+      <div className="lg:hidden border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="w-full px-4 py-4 flex items-center justify-between text-left">
           <div className="flex items-center space-x-3">
-            <div
-              className={`w-3 h-3 rounded-full ${
-                isConnected
-                  ? isAnalyzing
-                    ? "bg-green-500"
-                    : "bg-blue-500"
-                  : "bg-gray-400"
-              }`}
-            />
+            <Settings className="w-5 h-5 text-blue-500 mr-2" />
             <div>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Analysis Parameters
+                Market Setup
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {isConnected
                   ? isAnalyzing
                     ? "Analyzing..."
                     : "Connected"
-                  : "Disconnected"}
+                  : "Connecting..."}
               </p>
             </div>
           </div>
-          {isCollapsed ? (
-            <ChevronDown className="w-5 h-5 text-gray-400" />
-          ) : (
-            <ChevronUp className="w-5 h-5 text-gray-400" />
-          )}
-        </button>
+        </div>
       </div>
 
-      {/* Panel Content */}
-      <div
-        className={`flex-1 overflow-y-auto ${
-          isCollapsed ? "hidden lg:block" : "block"
-        }`}
-      >
-        <div className="p-4 lg:p-6">
+      {/* Panel Content - Always visible on both mobile and desktop */}
+      <div className="flex-1">
+        <div className="p-4 lg:p-6 h-full flex flex-col w-full">
           {/* Desktop-only title */}
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 hidden lg:block">
-            Analysis Parameters
+            Market Setup
           </h2>
 
-          <div className="space-y-4 lg:space-y-6">
+          <div className="space-y-4 lg:space-y-6 flex-1 overflow-y-auto">
             {/* Volatility Selection - Select Dropdown */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -150,7 +153,7 @@ export const MarketSetupPanel: React.FC<MarketSetupPanelProps> = ({
                 onChange={(e) =>
                   handleVolatilityChange(e.target.value as VolatilityIndex)
                 }
-                className="w-full px-3 py-3 lg:py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-base lg:text-sm"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               >
                 {VOLATILITY_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
@@ -173,7 +176,7 @@ export const MarketSetupPanel: React.FC<MarketSetupPanelProps> = ({
                 onChange={(e) =>
                   handleInputChange("contractType", e.target.value)
                 }
-                className="w-full px-3 py-3 lg:py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-base lg:text-sm"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               >
                 {CONTRACT_TYPES.map((type) => (
                   <option key={type.id} value={type.id}>
@@ -189,25 +192,34 @@ export const MarketSetupPanel: React.FC<MarketSetupPanelProps> = ({
             {/* Tick Range Input - Number Field */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Analysis Tick Range (0-1000)
+                Analysis Tick Range (1-1000)
               </label>
               <input
                 type="number"
-                min="0"
+                min="1"
                 max="1000"
-                value={tickRange}
-                onChange={(e) =>
-                  handleTickRangeChange(parseInt(e.target.value))
-                }
-                className="w-full px-3 py-3 lg:py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-base lg:text-sm"
-                placeholder="Enter tick range (0-1000)"
+                value={marketSetup.tickRange}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value);
+                  handleTickRangeChange(value);
+                }}
+                onBlur={(e) => {
+                  // Ensure value is within range when input loses focus
+                  const value = parseInt(e.target.value) || 1;
+                  const validatedValue = Math.min(1000, Math.max(1, value));
+                  if (value !== validatedValue) {
+                    handleTickRangeChange(validatedValue);
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                placeholder="Enter tick range (1-1000)"
               />
               <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Number of recent ticks to analyze
+                Number of recent ticks to analyze (minimum: 1, maximum: 1000)
               </div>
             </div>
 
-            {/* Digit Selection for Over/Under and Matches/Differs - Radio Buttons */}
+            {/* Digit Selection for Over/Under and Matches/Differs */}
             {(marketSetup.contractType === "over_under" ||
               marketSetup.contractType === "matches_differs") && (
               <div>
@@ -218,24 +230,17 @@ export const MarketSetupPanel: React.FC<MarketSetupPanelProps> = ({
                 </label>
                 <div className="grid grid-cols-5 gap-2">
                   {Array.from({ length: 10 }, (_, digit) => (
-                    <label
+                    <button
                       key={digit}
-                      className={`aspect-square rounded-lg border-2 font-semibold transition-all duration-200 flex items-center justify-center cursor-pointer ${
+                      onClick={() => handleDigitSelect(digit)}
+                      className={`aspect-square rounded-lg border-2 font-semibold transition-all duration-200 flex items-center justify-center ${
                         marketSetup.predictionDigit === digit
                           ? "bg-blue-500 border-blue-600 text-white shadow-lg scale-105"
                           : "bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600"
                       }`}
                     >
-                      <input
-                        type="radio"
-                        name="predictionDigit"
-                        value={digit}
-                        checked={marketSetup.predictionDigit === digit}
-                        onChange={() => handleDigitSelect(digit)}
-                        className="sr-only" // Hide the actual radio input
-                      />
                       {digit}
-                    </label>
+                    </button>
                   ))}
                 </div>
                 {marketSetup.predictionDigit !== undefined && (
@@ -251,47 +256,33 @@ export const MarketSetupPanel: React.FC<MarketSetupPanelProps> = ({
               </div>
             )}
 
-            {/* Even/Odd Selection - Radio Buttons */}
+            {/* Even/Odd Selection */}
             {marketSetup.contractType === "even_odd" && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                   Select Prediction
                 </label>
                 <div className="grid grid-cols-2 gap-3">
-                  <label
-                    className={`p-4 rounded-lg border-2 font-semibold transition-all duration-200 flex items-center justify-center cursor-pointer ${
+                  <button
+                    onClick={() => handleInputChange("predictionDigit", 0)}
+                    className={`p-4 rounded-lg border-2 font-semibold transition-all duration-200 ${
                       marketSetup.predictionDigit === 0
                         ? "bg-green-500 border-green-600 text-white shadow-lg"
                         : "bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600"
                     }`}
                   >
-                    <input
-                      type="radio"
-                      name="evenOdd"
-                      value="0"
-                      checked={marketSetup.predictionDigit === 0}
-                      onChange={() => handleInputChange("predictionDigit", 0)}
-                      className="sr-only"
-                    />
                     Even
-                  </label>
-                  <label
-                    className={`p-4 rounded-lg border-2 font-semibold transition-all duration-200 flex items-center justify-center cursor-pointer ${
+                  </button>
+                  <button
+                    onClick={() => handleInputChange("predictionDigit", 1)}
+                    className={`p-4 rounded-lg border-2 font-semibold transition-all duration-200 ${
                       marketSetup.predictionDigit === 1
                         ? "bg-blue-500 border-blue-600 text-white shadow-lg"
                         : "bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600"
                     }`}
                   >
-                    <input
-                      type="radio"
-                      name="evenOdd"
-                      value="1"
-                      checked={marketSetup.predictionDigit === 1}
-                      onChange={() => handleInputChange("predictionDigit", 1)}
-                      className="sr-only"
-                    />
                     Odd
-                  </label>
+                  </button>
                 </div>
               </div>
             )}
@@ -312,7 +303,7 @@ export const MarketSetupPanel: React.FC<MarketSetupPanelProps> = ({
                       parseFloat(e.target.value) || 0
                     )
                   }
-                  className="w-full px-3 py-3 lg:py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-base lg:text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 />
               </div>
             )}
@@ -323,7 +314,7 @@ export const MarketSetupPanel: React.FC<MarketSetupPanelProps> = ({
             <button
               onClick={handleAnalysisToggle}
               disabled={!isConnected}
-              className={`w-full flex items-center justify-center px-4 py-4 lg:py-3 rounded-lg font-medium transition-all duration-200 text-base lg:text-sm ${
+              className={`w-full flex items-center justify-center px-4 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${
                 isAnalyzing
                   ? "bg-red-500 hover:bg-red-600 text-white shadow-lg"
                   : "bg-green-500 hover:bg-green-600 text-white shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed disabled:shadow-none"
@@ -331,16 +322,29 @@ export const MarketSetupPanel: React.FC<MarketSetupPanelProps> = ({
             >
               {isAnalyzing ? (
                 <>
-                  <Square className="w-5 h-5 lg:w-4 lg:h-4 mr-2" />
+                  <Square className="w-4 h-4 mr-2" />
                   Stop Analysis
                 </>
               ) : (
                 <>
-                  <Play className="w-5 h-5 lg:w-4 lg:h-4 mr-2" />
+                  <Play className="w-4 h-4 mr-2" />
                   Start Analysis
                 </>
               )}
             </button>
+
+            {/* Auto-analysis Status */}
+            <div className="text-xs text-center text-gray-500 dark:text-gray-400">
+              {isConnected && isAnalyzing ? (
+                <span className="text-green-600">✓ Auto-analysis running</span>
+              ) : isConnected ? (
+                <span className="text-blue-600">
+                  Connected - Ready to analyze
+                </span>
+              ) : (
+                <span className="text-yellow-600">Connecting...</span>
+              )}
+            </div>
           </div>
         </div>
       </div>
