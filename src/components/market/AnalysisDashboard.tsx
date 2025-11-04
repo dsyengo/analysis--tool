@@ -360,7 +360,7 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 flex-1 overflow-auto">
           {/* Digit Frequency Chart */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 lg:p-6 border border-gray-200 dark:border-gray-700">
+          {/* <div className="bg-white dark:bg-gray-800 rounded-lg p-4 lg:p-6 border border-gray-200 dark:border-gray-700">
             <h3 className="font-semibold text-gray-900 dark:text-white mb-4 text-base lg:text-lg">
               Last Digit Frequency ({marketSetup.tickRange || 100} ticks)
             </h3>
@@ -387,7 +387,7 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 </ResponsiveContainer>
               </div>
             )}
-          </div>
+          </div> */}
 
           {/* Probability Analysis */}
           <div className="bg-white dark:bg-gray-800 rounded-lg p-4 lg:p-6 border border-gray-200 dark:border-gray-700">

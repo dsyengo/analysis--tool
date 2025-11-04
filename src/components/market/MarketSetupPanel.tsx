@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Play, Square, ChevronDown, ChevronUp } from "lucide-react";
-import type { MarketSetup, ContractType } from "../../types/market";
+import type {
+  MarketSetup,
+  ContractType,
+  VolatilityIndex,
+} from "../../types/market";
+import { VOLATILITY_SYMBOLS } from "../../utils/derivConfig";
 
 interface MarketSetupPanelProps {
   marketSetup: MarketSetup;
@@ -12,6 +17,8 @@ interface MarketSetupPanelProps {
   onDisconnect: () => void;
   onStartAnalysis: () => void;
   onStopAnalysis: () => void;
+  volatilityIndex: VolatilityIndex;
+  onVolatilityChange: (volatility: VolatilityIndex) => void;
 }
 
 const CONTRACT_TYPES = [
@@ -20,6 +27,14 @@ const CONTRACT_TYPES = [
   { id: "rise_fall" as ContractType, label: "Rise/Fall" },
   { id: "even_odd" as ContractType, label: "Even/Odd" },
 ];
+
+const VOLATILITY_OPTIONS = Object.entries(VOLATILITY_SYMBOLS).map(
+  ([key, value]) => ({
+    id: key as VolatilityIndex,
+    label: value.displayName,
+    frequency: value.tickFrequency,
+  })
+);
 
 export const MarketSetupPanel: React.FC<MarketSetupPanelProps> = ({
   marketSetup,
@@ -31,6 +46,8 @@ export const MarketSetupPanel: React.FC<MarketSetupPanelProps> = ({
   onDisconnect,
   onStartAnalysis,
   onStopAnalysis,
+  volatilityIndex,
+  onVolatilityChange,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [tickRange, setTickRange] = useState(100);
@@ -65,6 +82,10 @@ export const MarketSetupPanel: React.FC<MarketSetupPanelProps> = ({
     const validatedValue = Math.min(1000, Math.max(0, value));
     setTickRange(validatedValue);
     handleInputChange("tickRange", validatedValue);
+  };
+
+  const handleVolatilityChange = (volatility: VolatilityIndex) => {
+    onVolatilityChange(volatility);
   };
 
   return (
@@ -119,25 +140,49 @@ export const MarketSetupPanel: React.FC<MarketSetupPanelProps> = ({
           </h2>
 
           <div className="space-y-4 lg:space-y-6">
-            {/* Market Type Selection */}
+            {/* Volatility Selection - Select Dropdown */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Volatility Index
+              </label>
+              <select
+                value={volatilityIndex}
+                onChange={(e) =>
+                  handleVolatilityChange(e.target.value as VolatilityIndex)
+                }
+                className="w-full px-3 py-3 lg:py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-base lg:text-sm"
+              >
+                {VOLATILITY_OPTIONS.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label} ({option.frequency})
+                  </option>
+                ))}
+              </select>
+              <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Choose volatility instrument and frequency
+              </div>
+            </div>
+
+            {/* Market Type Selection - Select Dropdown */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Market Type
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <select
+                value={marketSetup.contractType}
+                onChange={(e) =>
+                  handleInputChange("contractType", e.target.value)
+                }
+                className="w-full px-3 py-3 lg:py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-base lg:text-sm"
+              >
                 {CONTRACT_TYPES.map((type) => (
-                  <button
-                    key={type.id}
-                    onClick={() => handleInputChange("contractType", type.id)}
-                    className={`p-3 text-sm font-medium rounded-md border transition-all duration-200 ${
-                      marketSetup.contractType === type.id
-                        ? "bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 shadow-sm"
-                        : "bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600"
-                    }`}
-                  >
+                  <option key={type.id} value={type.id}>
                     {type.label}
-                  </button>
+                  </option>
                 ))}
+              </select>
+              <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Select the type of market analysis
               </div>
             </div>
 
@@ -162,28 +207,35 @@ export const MarketSetupPanel: React.FC<MarketSetupPanelProps> = ({
               </div>
             </div>
 
-            {/* Digit Selection for Over/Under and Matches/Differs */}
+            {/* Digit Selection for Over/Under and Matches/Differs - Radio Buttons */}
             {(marketSetup.contractType === "over_under" ||
               marketSetup.contractType === "matches_differs") && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                   {marketSetup.contractType === "over_under"
                     ? "Select Prediction Digit"
                     : "Select Match Digit"}
                 </label>
                 <div className="grid grid-cols-5 gap-2">
                   {Array.from({ length: 10 }, (_, digit) => (
-                    <button
+                    <label
                       key={digit}
-                      onClick={() => handleDigitSelect(digit)}
-                      className={`aspect-square rounded-lg border-2 font-semibold transition-all duration-200 ${
+                      className={`aspect-square rounded-lg border-2 font-semibold transition-all duration-200 flex items-center justify-center cursor-pointer ${
                         marketSetup.predictionDigit === digit
                           ? "bg-blue-500 border-blue-600 text-white shadow-lg scale-105"
                           : "bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600"
                       }`}
                     >
+                      <input
+                        type="radio"
+                        name="predictionDigit"
+                        value={digit}
+                        checked={marketSetup.predictionDigit === digit}
+                        onChange={() => handleDigitSelect(digit)}
+                        className="sr-only" // Hide the actual radio input
+                      />
                       {digit}
-                    </button>
+                    </label>
                   ))}
                 </div>
                 {marketSetup.predictionDigit !== undefined && (
@@ -199,33 +251,47 @@ export const MarketSetupPanel: React.FC<MarketSetupPanelProps> = ({
               </div>
             )}
 
-            {/* Even/Odd Selection */}
+            {/* Even/Odd Selection - Radio Buttons */}
             {marketSetup.contractType === "even_odd" && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                   Select Prediction
                 </label>
                 <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => handleInputChange("predictionDigit", 0)}
-                    className={`p-4 rounded-lg border-2 font-semibold transition-all duration-200 ${
+                  <label
+                    className={`p-4 rounded-lg border-2 font-semibold transition-all duration-200 flex items-center justify-center cursor-pointer ${
                       marketSetup.predictionDigit === 0
                         ? "bg-green-500 border-green-600 text-white shadow-lg"
                         : "bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600"
                     }`}
                   >
+                    <input
+                      type="radio"
+                      name="evenOdd"
+                      value="0"
+                      checked={marketSetup.predictionDigit === 0}
+                      onChange={() => handleInputChange("predictionDigit", 0)}
+                      className="sr-only"
+                    />
                     Even
-                  </button>
-                  <button
-                    onClick={() => handleInputChange("predictionDigit", 1)}
-                    className={`p-4 rounded-lg border-2 font-semibold transition-all duration-200 ${
+                  </label>
+                  <label
+                    className={`p-4 rounded-lg border-2 font-semibold transition-all duration-200 flex items-center justify-center cursor-pointer ${
                       marketSetup.predictionDigit === 1
                         ? "bg-blue-500 border-blue-600 text-white shadow-lg"
                         : "bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600"
                     }`}
                   >
+                    <input
+                      type="radio"
+                      name="evenOdd"
+                      value="1"
+                      checked={marketSetup.predictionDigit === 1}
+                      onChange={() => handleInputChange("predictionDigit", 1)}
+                      className="sr-only"
+                    />
                     Odd
-                  </button>
+                  </label>
                 </div>
               </div>
             )}

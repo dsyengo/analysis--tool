@@ -29,6 +29,7 @@ export interface MarketSetup {
   predictionDigit?: number;
   barrierOffset?: number;
   tickRange?: number;
+  volatility?: VolatilityIndex;
 }
 
 export interface TickData {

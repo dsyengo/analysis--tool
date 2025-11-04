@@ -31,7 +31,7 @@ function App() {
     disconnect,
     subscribe,
     unsubscribe,
-    clearMessages,  
+    clearMessages,
   } = useWebSocket(DERIV_WS_URL);
 
   const handleConnect = () => {
@@ -151,6 +151,8 @@ function App() {
             onDisconnect={handleDisconnect}
             onStartAnalysis={handleStartAnalysis}
             onStopAnalysis={handleStopAnalysis}
+            volatilityIndex={volatilityIndex}
+            onVolatilityChange={handleVolatilityChange}
           />
         </div>
 
